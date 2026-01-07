@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مسبحة الذكاء الاصطناعي - Whisper</title>
+    <style>
+        :root {
+            --primary: #10b981;
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --text: #f8fafc;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* رسالة حالة النظام */
+        #status-container {
+            background: #334155;
+            padding: 15px 25px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+            width: 90%;
+            max-width: 500px;
+            border: 1px solid var(--primary);
+        }
+
+        .status-loading { color: #fbbf24; }
+        .status-ready { color: #10b981; font-weight: bold; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 20px;
+            text-align: center;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .count { font-size: 3.5rem; font-weight: 900; color: var(--primary); margin: 10px 0; }
+
+        /* وميض الذكر */
+        .flash-active {
+            animation: flash-green 0.6s ease-out;
+        }
+
+        @keyframes flash-green {
+            0% { border-color: var(--primary); box-shadow: 0 0 20px var(--primary); transform: scale(1.05); }
+            100% { border-color: transparent; box-shadow: none; transform: scale(1); }
+        }
+
+        .controls { margin-top: 30px; display: flex; gap: 10px; }
+        
+        button {
+            padding: 15px 30px;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+            transition: 0.3s;
+        }
+
+        .btn-record { background: var(--primary); color: white; opacity: 0.5; cursor: not-allowed; }
+        .recording { background: #ef4444; animation: pulse 1s infinite; }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        #log { margin-top: 20px; font-size: 0.8rem; color: #94a3b8; }
+    </style>
+</head>
+<body>
+
+    <h1>مسبحة Whisper الذكية</h1>
+
+    <div id="status-container">
+        <div id="status-text" class="status-loading">جاري تحميل معالجة الصوت (Whisper AI)...</div>
+        <small id="progress-text">قد يستغرق ذلك دقيقة في المرة الأولى</small>
+    </div>
+
+    <div class="grid" id="dhikr-grid">
+        <div class="card" id="card-استغفر الله" data-phrase="استغفر الله">
+            <h3>أستغفر الله</h3>
+            <div class="count">0</div>
+        </div>
+        <div class="card" id="card-سبحان الله" data-phrase="سبحان الله">
+            <h3>سبحان الله</h3>
+            <div class="count">0</div>
+        </div>
+        <div class="card" id="card-الحمد لله" data-phrase="الحمد لله">
+            <h3>الحمد لله</h3>
+            <div class="count">0</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button id="record-btn" class="btn-record" disabled>انتظر التحميل...</button>
+        <button style="background: #3b82f6; color: white;" onclick="addCustomDhikr()">➕ إضافة ذكر</button>
+    </div>
+
+    <div id="log">الذكاء الاصطناعي جاهز لسماعك...</div>
+
+    <script type="module">
+        import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0';
+
+        let transcriber;
+        let isRecording = false;
+        let audioContext;
+        let stream;
+        let processor;
+        
+        const statusText = document.getElementById('status-text');
+        const recordBtn = document.getElementById('record-btn');
+        const log = document.getElementById('log');
+
+        // 1. تحميل النموذج
+        async function loadModel() {
+            try {
+                transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny', {
+                    progress_callback: (p) => {
+                        if (p.status === 'progress') {
+                            document.getElementById('progress-text').innerText = `تم تحميل ${Math.round(p.loaded)}% من المعالج`;
+                        }
+                    }
+                });
+                
+                statusText.innerText = "✅ المحرك جاهز للعمل";
+                statusText.className = "status-ready";
+                document.getElementById('progress-text').innerText = "يمكنك البدء الآن";
+                recordBtn.disabled = false;
+                recordBtn.innerText = "🎤 ابدأ التسجيل المتواصل";
+                recordBtn.style.opacity = "1";
+                recordBtn.style.cursor = "pointer";
+            } catch (e) {
+                statusText.innerText = "خطأ في التحميل، يرجى تحديث الصفحة";
+                console.error(e);
+            }
+        }
+
+        loadModel();
+
+        // 2. إعدادات التسجيل ومعالجة الصوت
+        recordBtn.onclick = async () => {
+            if (isRecording) {
+                stopRecording();
+                return;
+            }
+            startRecording();
+        };
+
+        async function startRecording() {
+            isRecording = true;
+            recordBtn.innerText = "🛑 توقف";
+            recordBtn.classList.add('recording');
+            
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            audioContext = new AudioContext({ sampleRate: 16000 });
+            const source = audioContext.createMediaStreamSource(stream);
+            
+            // سنستخدم مسجل بسيط يرسل مقاطع كل 3 ثوانٍ للمعالجة
+            const recorder = new MediaRecorder(stream);
+            let chunks = [];
+
+            recorder.ondataavailable = e => chunks.push(e.data);
+            recorder.onstop = async () => {
+                const blob = new Blob(chunks, { type: 'audio/wav' });
+                chunks = [];
+                if (isRecording) {
+                    processAudio(blob);
+                    recorder.start(); // إعادة البدء للتسجيل المتواصل
+                    setTimeout(() => { if(recorder.state === 'recording') recorder.stop(); }, 3000);
+                }
+            };
+
+            recorder.start();
+            setTimeout(() => { if(recorder.state === 'recording') recorder.stop(); }, 3000);
+        }
+
+        function stopRecording() {
+            isRecording = false;
+            recordBtn.innerText = "🎤 ابدأ التسجيل المتواصل";
+            recordBtn.classList.remove('recording');
+            if (stream) stream.getTracks().forEach(t => t.stop());
+        }
+
+        async function processAudio(blob) {
+            const buffer = await blob.arrayBuffer();
+            const audioData = await audioContext.decodeAudioData(buffer);
+            const float32Data = audioData.getChannelData(0);
+
+            log.innerText = "جاري تحليل الصوت بـ Whisper...";
+            
+            const output = await transcriber(float32Data, {
+                language: 'arabic',
+                task: 'transcribe',
+                chunk_length_s: 30,
+            });
+
+            const text = normalizeArabic(output.text);
+            log.innerText = "سمعت: " + text;
+            countWords(text);
+        }
+
+        function normalizeArabic(text) {
+            return text.replace(/[إأآا]/g, "ا").replace(/ة/g, "ه").replace(/[ًٌٍَُِّْ]/g, "").trim();
+        }
+
+        function countWords(text) {
+            const cards = document.querySelectorAll('.card');
+            cards.forEach(card => {
+                const phrase = normalizeArabic(card.getAttribute('data-phrase'));
+                const regex = new RegExp(phrase, "g");
+                const matches = (text.match(regex) || []).length;
+                
+                if (matches > 0) {
+                    const countEl = card.querySelector('.count');
+                    let currentCount = parseInt(countEl.innerText);
+                    countEl.innerText = currentCount + matches;
+                    
+                    // تأثير الوميض
+                    card.classList.remove('flash-active');
+                    void card.offsetWidth;
+                    card.classList.add('flash-active');
+                }
+            });
+        }
+
+        window.addCustomDhikr = () => {
+            const d = prompt("ما الذكر الذي تريد إضافته؟");
+            if(d) {
+                const grid = document.getElementById('dhikr-grid');
+                const div = document.createElement('div');
+                div.className = 'card';
+                div.id = 'card-' + d;
+                div.setAttribute('data-phrase', d);
+                div.innerHTML = `<h3>${d}</h3><div class="count">0</div>`;
+                grid.appendChild(div);
+            }
+        }
+    </script>
+</body>
+</html>
