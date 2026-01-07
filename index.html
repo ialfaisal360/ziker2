@@ -3,163 +3,176 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مسبحة Whisper مع واجهة صوتية</title>
+    <title>مسبحة Whisper - الإصدار المستقر</title>
     <style>
         :root { --primary: #10b981; --bg: #0f172a; --card-bg: #1e293b; --text: #f8fafc; }
-        body { font-family: system-ui, -apple-system, sans-serif; background-color: var(--bg); color: var(--text); padding: 20px; display: flex; flex-direction: column; align-items: center; margin: 0; }
+        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 20px; display: flex; flex-direction: column; align-items: center; margin: 0; }
         
-        /* حاوية الأمواج الصوتية */
-        #visualizer-container {
-            width: 95%; max-width: 600px; height: 100px; background: #000;
-            border-radius: 15px; margin-bottom: 15px; display: flex; align-items: center;
-            justify-content: center; gap: 3px; overflow: hidden; border: 1px solid #334155;
+        /* مربع الأمواج الصوتية */
+        #viz-box {
+            width: 100%; max-width: 500px; height: 80px; background: #000;
+            border-radius: 12px; margin: 15px 0; display: flex; align-items: center;
+            justify-content: center; gap: 2px; border: 2px solid #334155;
         }
-        .bar { width: 4px; height: 5px; background: var(--primary); border-radius: 2px; transition: height 0.1s ease; }
+        .bar { width: 3px; height: 2px; background: var(--primary); transition: 0.05s; }
 
-        #monitor-box {
-            width: 95%; max-width: 600px; background: #1e293b; border: 1px solid #334155;
-            padding: 15px; border-radius: 12px; margin-bottom: 20px; min-height: 40px;
-            color: #fbbf24; font-family: monospace; font-size: 1rem; text-align: center;
+        #monitor {
+            width: 100%; max-width: 500px; background: #1e293b; padding: 15px;
+            border-radius: 10px; margin-bottom: 20px; color: #fbbf24; text-align: center;
+            min-height: 24px; border: 1px solid #334155; font-weight: bold;
         }
 
-        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; width: 100%; max-width: 600px; }
-        .card { background: var(--card-bg); padding: 20px; border-radius: 20px; text-align: center; border: 2px solid transparent; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; max-width: 500px; }
+        .card { background: var(--card-bg); padding: 20px; border-radius: 15px; text-align: center; transition: 0.3s; }
         .count { font-size: 2.5rem; font-weight: 900; color: var(--primary); }
-        .flash-active { animation: pulse 0.4s ease; border-color: var(--primary); }
-        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+        .active- ذكر { border: 2px solid var(--primary); animation: hit 0.4s ease; }
+        @keyframes hit { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 
-        .btn-record { 
-            width: 70px; height: 70px; border-radius: 50%; border: none; 
-            background: var(--primary); color: white; font-size: 1.5rem; cursor: pointer;
-            margin-top: 20px; transition: 0.3s;
+        #main-btn {
+            width: 80px; height: 80px; border-radius: 50%; border: none;
+            background: var(--primary); color: white; font-size: 2rem;
+            cursor: pointer; margin-top: 25px; transition: 0.3s;
         }
-        .recording { background: #ef4444; box-shadow: 0 0 20px rgba(239, 68, 68, 0.4); }
-        button:disabled { opacity: 0.2; }
+        #main-btn.listening { background: #ef4444; box-shadow: 0 0 20px #ef4444; }
+        button:disabled { opacity: 0.1; }
     </style>
 </head>
 <body>
 
-    <div id="status">جاري تحميل المحرك...</div>
+    <h3 id="status">جاري تشغيل النظام...</h3>
 
-    <div id="visualizer-container">
-        </div>
-
-    <div id="monitor-box">النص المسموع سيظهر هنا...</div>
+    <div id="viz-box"></div>
+    <div id="monitor">اضغط الزر وتحدث بوضوح</div>
 
     <div class="grid">
-        <div class="card" data-keywords='["استغفر الله", "استغفرالله"]'>
+        <div class="card" id="card-1" data-keys="استغفر الله">
             <div>أستغفر الله</div>
             <div class="count">0</div>
         </div>
-        <div class="card" data-keywords='["سبحان الله", "سبحانالله"]'>
+        <div class="card" id="card-2" data-keys="سبحان الله">
             <div>سبحان الله</div>
             <div class="count">0</div>
         </div>
-        <div class="card" data-keywords='["الحمد لله", "الحمدلله"]'>
+        <div class="card" id="card-3" data-keys="الحمد لله">
             <div>الحمد لله</div>
             <div class="count">0</div>
         </div>
-        <div class="card" data-keywords='["لا حول ولا", "لاحول ولا"]'>
-            <div>الحوقلة</div>
+        <div class="card" id="card-4" data-keys="لا حول ولا قوة">
+            <div>لا حول ولا قوة</div>
             <div class="count">0</div>
         </div>
     </div>
 
-    <button id="record-btn" class="btn-record" disabled>🎤</button>
+    <button id="main-btn" disabled>🎤</button>
 
     <script type="module">
         import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0';
 
         let transcriber;
-        let isRecording = false;
-        let audioCtx, analyser, dataArray, source;
-        const btn = document.getElementById('record-btn');
-        const monitor = document.getElementById('monitor-box');
+        let isListening = false;
+        let audioCtx, analyser, dataArray;
+        const btn = document.getElementById('main-btn');
+        const monitor = document.getElementById('monitor');
+        const vizBox = document.getElementById('viz-box');
 
-        // توليد أعمدة الأمواج
-        const visualizer = document.getElementById('visualizer-container');
-        for (let i = 0; i < 60; i++) {
-            const bar = document.createElement('div');
-            bar.className = 'bar';
-            visualizer.appendChild(bar);
+        // 1. بناء أعمدة الأمواج
+        for(let i=0; i<50; i++) {
+            let b = document.createElement('div');
+            b.className = 'bar';
+            vizBox.appendChild(b);
         }
         const bars = document.querySelectorAll('.bar');
 
-        async function init() {
-            transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny');
-            document.getElementById('status').innerText = "✅ جاهز";
-            btn.disabled = false;
+        // 2. تحميل الموديل
+        async function setup() {
+            try {
+                transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny');
+                document.getElementById('status').innerText = "✅ النظام جاهز";
+                btn.disabled = false;
+            } catch(e) { 
+                document.getElementById('status').innerText = "فشل التحميل، تأكد من الإنترنت";
+            }
         }
-        init();
+        setup();
 
+        // 3. التحكم بالزر
         btn.onclick = async () => {
-            if (isRecording) { location.reload(); return; } // إعادة تشغيل للتوقف البسيط
-            startApp();
+            if (isListening) { location.reload(); return; }
+            startListening();
         };
 
-        async function startApp() {
-            isRecording = true;
-            btn.classList.add('recording');
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            
-            // إعداد Visualizer
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
-            analyser = audioCtx.createAnalyser();
-            source = audioCtx.createMediaStreamSource(stream);
-            source.connect(analyser);
-            analyser.fftSize = 256;
-            dataArray = new Uint8Array(analyser.frequencyBinCount);
-            draw();
-
-            // إعداد المسجل للمعالجة
-            const recorder = new MediaRecorder(stream);
-            let chunks = [];
-            recorder.ondataavailable = e => chunks.push(e.data);
-            recorder.onstop = async () => {
-                const blob = new Blob(chunks, { type: 'audio/wav' });
-                chunks = [];
-                if (isRecording) {
-                    process(blob);
-                    recorder.start();
-                    setTimeout(() => recorder.stop(), 3000); // حلل كل 3 ثواني
+        async function startListening() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                isListening = true;
+                btn.classList.add('listening');
+                
+                // تشغيل الأمواج الصوتية فوراً
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+                analyser = audioCtx.createAnalyser();
+                const source = audioCtx.createMediaStreamSource(stream);
+                source.connect(analyser);
+                analyser.fftSize = 64;
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+                
+                function updateViz() {
+                    if(!isListening) return;
+                    requestAnimationFrame(updateViz);
+                    analyser.getByteFrequencyData(dataArray);
+                    bars.forEach((b, i) => {
+                        let h = dataArray[i % dataArray.length] / 2;
+                        b.style.height = Math.max(2, h) + 'px';
+                    });
                 }
-            };
-            recorder.start();
-            setTimeout(() => recorder.stop(), 3000);
+                updateViz();
+
+                // التسجيل للمعالجة
+                const recorder = new MediaRecorder(stream);
+                recorder.ondataavailable = async (e) => {
+                    if (e.data.size > 0) processAudio(e.data);
+                };
+
+                // نبدأ دورات تسجيل مدتها 4 ثواني
+                setInterval(() => {
+                    if (recorder.state === 'recording') recorder.stop();
+                    if (isListening) recorder.start();
+                }, 4000);
+                
+                recorder.start();
+                monitor.innerText = "أسمعك الآن... تحدث بذكر الله";
+
+            } catch (err) {
+                alert("يرجى السماح بالوصول للميكروفون");
+            }
         }
 
-        function draw() {
-            if (!isRecording) return;
-            requestAnimationFrame(draw);
-            analyser.getByteFrequencyData(dataArray);
-            bars.forEach((bar, i) => {
-                const val = dataArray[i % dataArray.length];
-                bar.style.height = (val / 2) + 'px';
-            });
-        }
-
-        async function process(blob) {
+        async function processAudio(blob) {
             const buffer = await blob.arrayBuffer();
             const decoded = await audioCtx.decodeAudioData(buffer);
-            const result = await transcriber(decoded.getChannelData(0), { language: 'arabic', task: 'transcribe' });
-            
-            const text = result.text.trim();
-            monitor.innerText = "سمعت: " + text;
-            
-            const cleanText = text.replace(/[إأآا]/g, "ا").replace(/ة/g, "ه").replace(/[ًٌٍَُِّْ]/g, "");
+            const rawAudio = decoded.getChannelData(0);
 
+            const result = await transcriber(rawAudio, { language: 'arabic', task: 'transcribe' });
+            const text = result.text.trim();
+            
+            if (text) {
+                monitor.innerText = text;
+                matchDhikr(text);
+            }
+        }
+
+        function matchDhikr(text) {
+            const clean = text.replace(/[إأآا]/g, "ا").replace(/ة/g, "ه").replace(/[ًٌٍَُِّْ]/g, "");
             document.querySelectorAll('.card').forEach(card => {
-                const keys = JSON.parse(card.getAttribute('data-keywords'));
-                keys.forEach(key => {
-                    const regex = new RegExp(key.replace(/[إأآا]/g, "ا").replace(/ة/g, "ه"), "g");
-                    const matches = (cleanText.match(regex) || []).length;
-                    if (matches > 0) {
-                        const countEl = card.querySelector('.count');
-                        countEl.innerText = parseInt(countEl.innerText) + matches;
-                        card.classList.add('flash-active');
-                        setTimeout(() => card.classList.remove('flash-active'), 400);
-                    }
-                });
+                const key = card.getAttribute('data-keys').replace(/[إأآا]/g, "ا").replace(/ة/g, "ه");
+                const regex = new RegExp(key, "g");
+                const count = (clean.match(regex) || []).length;
+                
+                if (count > 0) {
+                    const num = card.querySelector('.count');
+                    num.innerText = parseInt(num.innerText) + count;
+                    card.classList.add('active-ذكر');
+                    setTimeout(() => card.classList.remove('active-ذكر'), 500);
+                }
             });
         }
     </script>
