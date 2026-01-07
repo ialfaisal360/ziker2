@@ -3,63 +3,66 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مسبحة Whisper - مراقب النص</title>
+    <title>مسبحة الذكاء الاصطناعي - النسخة الاحترافية</title>
     <style>
         :root { --primary: #10b981; --bg: #0f172a; --card-bg: #1e293b; --text: #f8fafc; }
-        body { font-family: sans-serif; background-color: var(--bg); color: var(--text); padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; margin: 0; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); color: var(--text); padding: 20px; display: flex; flex-direction: column; align-items: center; margin: 0; }
         
-        /* مربع مراقبة النص المباشر */
         #monitor-box {
-            width: 90%; max-width: 600px; background: #000; border: 2px solid var(--primary);
-            padding: 15px; border-radius: 12px; margin-bottom: 20px; min-height: 60px;
-            color: #adff2f; font-family: monospace; font-size: 1.1rem; text-align: center;
-            box-shadow: inset 0 0 10px rgba(16, 185, 129, 0.2);
+            width: 95%; max-width: 600px; background: #000; border: 2px solid var(--primary);
+            padding: 20px; border-radius: 15px; margin-bottom: 20px; min-height: 80px;
+            color: #adff2f; font-family: monospace; font-size: 1.2rem; text-align: center;
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.1);
         }
 
-        #status-container { background: #334155; padding: 10px; border-radius: 8px; margin-bottom: 20px; width: 90%; max-width: 600px; text-align: center; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; width: 100%; max-width: 600px; }
-        .card { background: var(--card-bg); padding: 20px; border-radius: 15px; text-align: center; border: 2px solid transparent; transition: 0.3s; }
-        .count { font-size: 2.5rem; font-weight: bold; color: var(--primary); }
-        .flash-active { animation: flash 0.5s ease-out; }
-        @keyframes flash { 0% { background: var(--primary); transform: scale(1.05); } 100% { background: var(--card-bg); transform: scale(1); } }
+        .status-badge { padding: 5px 15px; border-radius: 20px; font-size: 0.8rem; margin-bottom: 10px; }
+        .loading { background: #fbbf24; color: #000; }
+        .ready { background: var(--primary); color: #fff; }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; width: 100%; max-width: 600px; }
+        .card { background: var(--card-bg); padding: 20px; border-radius: 20px; text-align: center; border: 3px solid transparent; transition: 0.2s; position: relative; }
+        .count { font-size: 3rem; font-weight: 900; color: var(--primary); margin-top: 5px; }
         
-        .controls { margin-top: 20px; display: flex; gap: 10px; }
-        button { padding: 15px 25px; border-radius: 30px; border: none; font-weight: bold; cursor: pointer; }
-        #record-btn { background: var(--primary); color: white; }
-        #record-btn.recording { background: #ef4444; }
-        #record-btn:disabled { opacity: 0.3; }
+        /* وميض احترافي */
+        .flash-active { animation: ripple 0.6s linear; border-color: var(--primary); }
+        @keyframes ripple { 0% { transform: scale(1); } 50% { transform: scale(1.08); } 100% { transform: scale(1); } }
+
+        .btn-main { 
+            width: 80px; height: 80px; border-radius: 50%; border: none; 
+            background: var(--primary); color: white; font-size: 1.5rem; cursor: pointer;
+            box-shadow: 0 0 15px var(--primary); margin-top: 30px; transition: 0.3s;
+        }
+        .btn-main.recording { background: #ef4444; box-shadow: 0 0 20px #ef4444; }
+        .btn-main:disabled { opacity: 0.2; cursor: not-allowed; }
     </style>
 </head>
 <body>
 
-    <h2 style="color: var(--primary);">مراقب الذكر الذكي</h2>
+    <div id="status-label" class="status-badge loading">جاري تحميل المعالج عالي الدقة (Base)...</div>
+    
+    <div id="monitor-box">انتظر حتى يكتمل التحميل...</div>
 
-    <div id="monitor-box">انتظر تحميل المعالج...</div>
-
-    <div id="status-container">
-        <div id="status-text" style="color: #fbbf24;">جاري تحميل Whisper AI...</div>
-        <div id="progress-bar" style="font-size: 0.8rem;"></div>
-    </div>
-
-    <div class="grid" id="dhikr-grid">
-        <div class="card" data-phrase="استغفر الله">
+    <div class="grid">
+        <div class="card" id="card-astaghfir" data-keywords='["استغفر الله", "استغفرالله", "ستغفر الله"]'>
             <div>أستغفر الله</div>
             <div class="count">0</div>
         </div>
-        <div class="card" data-phrase="سبحان الله">
+        <div class="card" id="card-subhan" data-keywords='["سبحان الله", "سبحان الله"]'>
             <div>سبحان الله</div>
             <div class="count">0</div>
         </div>
-        <div class="card" data-phrase="الحمد لله">
+        <div class="card" id="card-hamdulillah" data-keywords='["الحمد لله", "الحمدلله"]'>
             <div>الحمد لله</div>
+            <div class="count">0</div>
+        </div>
+        <div class="card" id="card-hawqala" data-keywords='["لا حول ولا قوة", "لاحول ولاقوة"]'>
+            <div>الحوقلة</div>
             <div class="count">0</div>
         </div>
     </div>
 
-    <div class="controls">
-        <button id="record-btn" disabled>جاري التحميل...</button>
-        <button onclick="location.reload()" style="background:#475569; color:white;">تحديث</button>
-    </div>
+    <button id="record-btn" class="btn-main" disabled>🎤</button>
+    <p id="progress-info" style="font-size: 0.8rem; margin-top: 10px; color: #94a3b8;"></p>
 
     <script type="module">
         import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.6.0';
@@ -70,47 +73,42 @@
         let stream;
 
         const monitor = document.getElementById('monitor-box');
-        const status = document.getElementById('status-text');
         const btn = document.getElementById('record-btn');
+        const statusLabel = document.getElementById('status-label');
 
-        // 1. تحميل المعالج بذكاء
-        async function init() {
+        // تحميل نسخة Whisper Base الأكثر دقة
+        async function loadHighPrecisionModel() {
             try {
-                transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-tiny', {
+                transcriber = await pipeline('automatic-speech-recognition', 'Xenova/whisper-base', {
                     progress_callback: (p) => {
-                        if (p.status === 'progress') 
-                            document.getElementById('progress-bar').innerText = `تم تحميل ${Math.round(p.loaded)}%`;
+                        if (p.status === 'progress') {
+                            document.getElementById('progress-info').innerText = `جاري تحميل ${Math.round(p.loaded)}% من البيانات...`;
+                        }
                     }
                 });
-                status.innerText = "✅ جاهز تماماً";
-                status.style.color = "#10b981";
-                monitor.innerText = "اضغط (ابدأ التسجيل) وتحدث";
+                statusLabel.innerText = "✅ المحرك عالي الدقة جاهز";
+                statusLabel.className = "status-badge ready";
+                monitor.innerText = "تحدث الآن بلهجتك الطبيعية";
                 btn.disabled = false;
-                btn.innerText = "🎤 ابدأ التسجيل";
             } catch (e) {
-                status.innerText = "حدث خطأ في التحميل";
+                statusLabel.innerText = "خطأ في التحميل!";
             }
         }
-        init();
+        loadHighPrecisionModel();
 
-        // 2. إدارة التسجيل
         btn.onclick = async () => {
             if (isRecording) {
                 isRecording = false;
-                btn.innerText = "🎤 ابدأ التسجيل";
                 btn.classList.remove('recording');
                 if (stream) stream.getTracks().forEach(t => t.stop());
                 return;
             }
-            startWorker();
+            startEngine();
         };
 
-        async function startWorker() {
+        async function startEngine() {
             isRecording = true;
-            btn.innerText = "🛑 توقف";
             btn.classList.add('recording');
-            monitor.innerText = "أسمعك الآن... تكلم";
-
             stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             audioCtx = new AudioContext({ sampleRate: 16000 });
             
@@ -122,49 +120,62 @@
                 const blob = new Blob(chunks, { type: 'audio/wav' });
                 chunks = [];
                 if (isRecording) {
-                    analyze(blob);
+                    processVoice(blob);
                     recorder.start(); 
-                    setTimeout(() => { if(recorder.state === 'recording') recorder.stop(); }, 4000);
+                    setTimeout(() => { if(recorder.state === 'recording') recorder.stop(); }, 3500);
                 }
             };
 
             recorder.start();
-            setTimeout(() => { if(recorder.state === 'recording') recorder.stop(); }, 4000);
+            setTimeout(() => { if(recorder.state === 'recording') recorder.stop(); }, 3500);
         }
 
-        // 3. تحليل الصوت ومقارنة الكلمات
-        async function analyze(blob) {
+        async function processVoice(blob) {
             const buffer = await blob.arrayBuffer();
             const decoded = await audioCtx.decodeAudioData(buffer);
             const audio = decoded.getChannelData(0);
 
-            const result = await transcriber(audio, { language: 'arabic', task: 'transcribe' });
+            // إعدادات المعالجة لزيادة الدقة
+            const result = await transcriber(audio, { 
+                language: 'arabic',
+                task: 'transcribe',
+                return_timestamps: false,
+                chunk_length_s: 30,
+                stride_length_s: 5
+            });
+
             let text = result.text.trim();
-            
-            // عرض النص في مربع المراقبة
-            monitor.innerText = "سمعت: " + text;
+            monitor.innerText = text; // عرض النص الخام للتأكد
 
             const cleanText = normalize(text);
             const cards = document.querySelectorAll('.card');
 
             cards.forEach(card => {
-                const phrase = normalize(card.getAttribute('data-phrase'));
-                // نستخدم Regex لحساب عدد التكرارات في الجملة
-                const regex = new RegExp(phrase, "g");
-                const matches = (cleanText.match(regex) || []).length;
-                
-                if (matches > 0) {
+                const keywords = JSON.parse(card.getAttribute('data-keywords'));
+                let foundCount = 0;
+
+                keywords.forEach(key => {
+                    const cleanKey = normalize(key);
+                    const regex = new RegExp(cleanKey, "g");
+                    const matches = (cleanText.match(regex) || []).length;
+                    foundCount += matches;
+                });
+
+                if (foundCount > 0) {
                     const countEl = card.querySelector('.count');
-                    countEl.innerText = parseInt(countEl.innerText) + matches;
-                    card.classList.remove('flash-active');
-                    void card.offsetWidth;
+                    countEl.innerText = parseInt(countEl.innerText) + foundCount;
                     card.classList.add('flash-active');
+                    setTimeout(() => card.classList.remove('flash-active'), 600);
                 }
             });
         }
 
         function normalize(t) {
-            return t.replace(/[إأآا]/g, "ا").replace(/ة/g, "ه").replace(/[ًٌٍَُِّْ]/g, "").replace(/\./g, "").trim();
+            return t.replace(/[إأآا]/g, "ا")
+                    .replace(/ة/g, "ه")
+                    .replace(/[ًٌٍَُِّْ]/g, "")
+                    .replace(/[^\u0621-\u064A\s]/g, "") // حذف أي رموز غير عربية
+                    .trim();
         }
     </script>
 </body>
